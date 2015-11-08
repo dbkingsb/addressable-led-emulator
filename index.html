@@ -7,7 +7,7 @@
 	<script type="text/javascript">
 		var refreshRate = 100;
 		var fallRate = .10;
-		var stringCount = 1;
+		var stringCount = 6;
 		var stringLedCount = 18;
 		var stringLedSpacing = 25;
 		var stringLedLead = 10;
@@ -32,20 +32,34 @@
 			modelSnowflakes();
 		}
 		function getRgbArr() {
-			var rgbArr = [];
+			// prefill might not be necessary
+			var rgbArr = newFilledArray(stringCount*stringLedCount*3, 0);
 			// TODO
 			// This all needs to be rewritten. Cannot make RGB arr based on number of snowflakes. Need to produce
 			// and "all off" array first, and then go through snow flakes and find each near LED.
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
-				for (var k=0; k<stringLedCount; k++) {
-					var ledStartIdx = i*stringLedCount + k*3;
-					// remove abs here, and break when diff is positve over falloff
-					var diff = Math.abs((k*stringLedSpacing+stringLedLead) - sf.y);
+
+				var nearByLedIdxs = []
+				var fuzzyLedIdx = (sf.y-stringLedLead) / stringLedSpacing ;
+				if (fuzzyLedIdx % 1 == 0) {
+					nearByLedIdxs.push(fuzzyLedIdx);
+				}
+				else {
+					if (Math.ceil(fuzzyLedIdx) < stringLedCount) {
+						nearByLedIdxs.push(Math.floor(fuzzyLedIdx));
+						nearByLedIdxs.push(Math.ceil(fuzzyLedIdx));
+					}
+				}
+
+				for (var k=0; k<nearByLedIdxs.length; k++) {
+					var ledIdx = nearByLedIdxs[k];
+					var diff = Math.abs((ledIdx*stringLedSpacing+stringLedLead) - sf.y);
 					var intensity = 0;
 					if (diff < fallOff) {
 						intensity = Math.floor(255 / fallOff * (fallOff-diff));
 					}
+					var ledStartIdx = sf.x*stringLedCount*3 + ledIdx*3;
 					rgbArr[ledStartIdx] = rgbArr[ledStartIdx+1] = rgbArr[ledStartIdx+2] = intensity;					
 				}
 			}
@@ -67,9 +81,9 @@
 				for (var k=0; k<stringLedCount; k++) {
 					ctx.beginPath();
 					ctx.strokeStyle = "rgb(100,100,100)";
-					var r = rgbArr[k*3];
-					var g = rgbArr[k*3+1];
-					var b = rgbArr[k*3+2];
+					var r = rgbArr[i*stringLedCount*3 + k*3];
+					var g = rgbArr[i*stringLedCount*3 + k*3+1];
+					var b = rgbArr[i*stringLedCount*3 + k*3+2];
 					if (r || g || b) {
 						ctx.fillStyle = "rgb("+r+","+g+","+b+")";
 					}
@@ -138,6 +152,13 @@
 		}
 		function getLowestLedY() {
 			return stringLedCount * stringLedSpacing + stringLedLead;
+		}
+		function newFilledArray(len, val) {
+		    var rv = new Array(len);
+		    while (--len >= 0) {
+		        rv[len] = val;
+		    }
+		    return rv;
 		}
 	</script>
 </head>
