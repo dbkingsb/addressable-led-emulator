@@ -6,11 +6,15 @@
 	</style>
 	<script type="text/javascript">
 		var refreshRate = 100;
-		var fallRate = .090;
+		var fallRate = .10;
+		var stringCount = 1;
 		var stringLedCount = 18;
 		var stringLedSpacing = 25;
-		var stringLead = 10;
+		var stringLedLead = 10;
+		var stringSpacing = 100;
+		var stringLead = 50;
 		var fallOff = 20;
+		var snowflakeStringDensity = 2;
 		var canvas;
 		var ctx;
 		var frameTs;
@@ -18,9 +22,7 @@
 		var model = {
 			lastFrameTs: Date.now(),
 			frameTs: Date.now(),
-			snowflakes: [
-				{x:100, y: 0}
-			]
+			snowflakes: []
 		};
 
 		function init() {
@@ -31,12 +33,15 @@
 		}
 		function getRgbArr() {
 			var rgbArr = [];
+			// TODO
+			// This all needs to be rewritten. Cannot make RGB arr based on number of snowflakes. Need to produce
+			// and "all off" array first, and then go through snow flakes and find each near LED.
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
 				for (var k=0; k<stringLedCount; k++) {
 					var ledStartIdx = i*stringLedCount + k*3;
 					// remove abs here, and break when diff is positve over falloff
-					var diff = Math.abs((k*stringLedSpacing+stringLead) - sf.y);
+					var diff = Math.abs((k*stringLedSpacing+stringLedLead) - sf.y);
 					var intensity = 0;
 					if (diff < fallOff) {
 						intensity = Math.floor(255 / fallOff * (fallOff-diff));
@@ -57,22 +62,24 @@
 			// clear canvas
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-			// LED string model
-			for (var i=0; i<stringLedCount; i++) {
-				ctx.beginPath();
-				ctx.strokeStyle = "rgb(100,100,100)";
-				var r = rgbArr[i*3];
-				var g = rgbArr[i*3+1];
-				var b = rgbArr[i*3+2];
-				if (r || g || b) {
-					ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+			// LED strings
+			for (var i=0; i<stringCount; i++) {
+				for (var k=0; k<stringLedCount; k++) {
+					ctx.beginPath();
+					ctx.strokeStyle = "rgb(100,100,100)";
+					var r = rgbArr[k*3];
+					var g = rgbArr[k*3+1];
+					var b = rgbArr[k*3+2];
+					if (r || g || b) {
+						ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+					}
+					else {
+						ctx.fillStyle = "rgb(0,0,0)";
+					}
+					ctx.arc(i*stringSpacing+stringLead, k*stringLedSpacing+stringLedLead, 5, 0, Math.PI*2, false);
+					ctx.stroke();
+					ctx.fill();
 				}
-				else {
-					ctx.fillStyle = "rgb(0,0,0)";
-				}
-				ctx.arc(120, i*stringLedSpacing+stringLead, 5, 0, Math.PI*2, false);
-				ctx.stroke();
-				ctx.fill();
 			}
 
 			// The "real" snowflakes being modeled
@@ -85,9 +92,10 @@
 		function drawSnowflakes() {
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
+				var x = stringLead + sf.x*stringSpacing - 20;
 				ctx.beginPath();
 				ctx.fillStyle = "rgb(244,3,244)";
-	        	ctx.arc(sf.x,sf.y,5,0,Math.PI*2,false);
+	        	ctx.arc(x,sf.y,5,0,Math.PI*2,false);
 	        	ctx.fill();				
 			}
 		}
@@ -102,10 +110,20 @@
 			if (!model.lastFrameTs) {
 				model.lastFrameTs = model.frameTs;
 			}
+			// snowflake init
+			if (model.snowflakes.length==0) {
+				for (var i=0; i<stringCount; i++) {
+					model.snowflakes.push({x:i,y:0});
+				}
+			}
 			// move
-			for(var i=0; i<model.snowflakes.length; i++) {
+			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
 				sf.y = drop(sf.y, model.frameTs-model.lastFrameTs);
+				// destroy snowflake once it falls beyond the string
+				if (sf.y > getLowestLedY() + fallOff) {
+					model.snowflakes.splice(i,1);
+				}
 			}
 			// conclude
 			model.lastFrameTs = model.frameTs;
@@ -116,10 +134,10 @@
 		function drop(y, dt) {
 			var newY = y ? y : 0;
 			newY += dt * fallRate;
-			if (newY>canvas.height) {
-				newY=0;
-			}
 			return newY;
+		}
+		function getLowestLedY() {
+			return stringLedCount * stringLedSpacing + stringLedLead;
 		}
 	</script>
 </head>
