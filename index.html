@@ -6,14 +6,15 @@
 	</style>
 	<script type="text/javascript">
 		var refreshRate = 100;
-		var fallRate = .10;
+		var fallRate = .1;
+		var failRateVariance = .2; 
 		var stringCount = 6;
 		var stringLedCount = 18;
 		var stringLedSpacing = 25;
 		var stringLedLead = 10;
 		var stringSpacing = 100;
 		var stringLead = 50;
-		var fallOff = 20;
+		var intensityThresh = 20;
 		var snowflakeStringDensity = 2;
 		var canvas;
 		var ctx;
@@ -56,8 +57,8 @@
 					var ledIdx = nearByLedIdxs[k];
 					var diff = Math.abs((ledIdx*stringLedSpacing+stringLedLead) - sf.y);
 					var intensity = 0;
-					if (diff < fallOff) {
-						intensity = Math.floor(255 / fallOff * (fallOff-diff));
+					if (diff < intensityThresh) {
+						intensity = Math.floor(255 / intensityThresh * (intensityThresh-diff));
 					}
 					var ledStartIdx = sf.x*stringLedCount*3 + ledIdx*3;
 					rgbArr[ledStartIdx] = rgbArr[ledStartIdx+1] = rgbArr[ledStartIdx+2] = intensity;					
@@ -127,15 +128,16 @@
 			// snowflake init
 			if (model.snowflakes.length==0) {
 				for (var i=0; i<stringCount; i++) {
-					model.snowflakes.push({x:i,y:0});
+					model.snowflakes.push(createSnowflake(i));
 				}
 			}
 			// move
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
-				sf.y = drop(sf.y, model.frameTs-model.lastFrameTs);
+				sf.y = drop(sf.y, sf.fallRate, model.frameTs-model.lastFrameTs);
 				// destroy snowflake once it falls beyond the string
-				if (sf.y > getLowestLedY() + fallOff) {
+				if (sf.y > getLowestLedY() + intensityThresh) {
+					model.snowflakes.push(createSnowflake(sf.x));
 					model.snowflakes.splice(i,1);
 				}
 			}
@@ -145,9 +147,15 @@
 				modelSnowflakes();
 			}, refreshRate);
 		}
-		function drop(y, dt) {
+		function createSnowflake(stringIdx) {
+			return {
+				x:stringIdx, y:0,
+				fallRate: (fallRate+fallRate*failRateVariance) - Math.random()*fallRate*failRateVariance*2
+			}			
+		}
+		function drop(y, s, dt) {
 			var newY = y ? y : 0;
-			newY += dt * fallRate;
+			newY += dt * s;
 			return newY;
 		}
 		function getLowestLedY() {
