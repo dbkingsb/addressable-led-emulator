@@ -1,21 +1,22 @@
 <html>
 <head>
 	<style>
-		body { background: black; }
+		body { background: black; color:white; }
 		canvas { border: 1px solid gray; }
 	</style>
 	<script type="text/javascript">
-		var refreshRate = 100;
-		var fallRate = .1;
-		var failRateVariance = .2; 
-		var stringCount = 6;
+		var refreshRate = 50;
+		var fallRate = .05;
+		var failRateVariance = .5; 
+		var stringCount = 12;
 		var stringLedCount = 18;
 		var stringLedSpacing = 25;
 		var stringLedLead = 10;
 		var stringSpacing = 100;
-		var stringLead = 50;
+		var stringLead = 0;
 		var intensityThresh = 20;
 		var snowflakeStringDensity = 2;
+		var drawModel = true;
 		var canvas;
 		var ctx;
 		var frameTs;
@@ -33,11 +34,8 @@
 			modelSnowflakes();
 		}
 		function getRgbArr() {
-			// prefill might not be necessary
-			var rgbArr = newFilledArray(stringCount*stringLedCount*3, 0);
-			// TODO
-			// This all needs to be rewritten. Cannot make RGB arr based on number of snowflakes. Need to produce
-			// and "all off" array first, and then go through snow flakes and find each near LED.
+			// prefill is not necessary
+			var rgbArr = [];
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
 
@@ -91,23 +89,31 @@
 					else {
 						ctx.fillStyle = "rgb(0,0,0)";
 					}
-					ctx.arc(i*stringSpacing+stringLead, k*stringLedSpacing+stringLedLead, 5, 0, Math.PI*2, false);
+					ctx.arc(i*getStringSpacing()+getStringLead(), k*stringLedSpacing+stringLedLead, 5, 0, Math.PI*2, false);
 					ctx.stroke();
 					ctx.fill();
 				}
 			}
 
 			// The "real" snowflakes being modeled
-			drawSnowflakes();
+			if (drawModel) {
+				drawSnowflakes();
+			}
 
 			// frame conclusion
         	lastFrameTs = frameTs;
 			requestFrame();
 		}
+		function getStringSpacing() {
+			return canvas.width / stringCount;
+		}
+		function getStringLead() {
+			return getStringSpacing() / 2;
+		}
 		function drawSnowflakes() {
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
-				var x = stringLead + sf.x*stringSpacing - 20;
+				var x = getStringLead() + sf.x*getStringSpacing() - 20;
 				ctx.beginPath();
 				ctx.fillStyle = "rgb(244,3,244)";
 	        	ctx.arc(x,sf.y,5,0,Math.PI*2,false);
@@ -128,14 +134,16 @@
 			// snowflake init
 			if (model.snowflakes.length==0) {
 				for (var i=0; i<stringCount; i++) {
-					model.snowflakes.push(createSnowflake(i));
+					for (var j=0; j<snowflakeStringDensity; j++) {
+						model.snowflakes.push(createSnowflake(i));
+					}
 				}
 			}
 			// move
 			for (var i=0; i<model.snowflakes.length; i++) {
 				var sf = model.snowflakes[i];
 				sf.y = drop(sf.y, sf.fallRate, model.frameTs-model.lastFrameTs);
-				// destroy snowflake once it falls beyond the string
+				// destroy snowflake once it falls beyond the string, and create a new one
 				if (sf.y > getLowestLedY() + intensityThresh) {
 					model.snowflakes.push(createSnowflake(sf.x));
 					model.snowflakes.splice(i,1);
@@ -171,6 +179,7 @@
 	</script>
 </head>
 <body onload="init();">
-	<canvas id="myCanvas" width="600" height="500"></canvas>
+	<canvas id="myCanvas" width="800" height="500"></canvas><br>
+	<button onclick="drawModel=!drawModel">Toggle Model</button>
 </body>
 </html>
