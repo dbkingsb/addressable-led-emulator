@@ -4,79 +4,46 @@
 		body { background: black; color:white; }
 		canvas { border: 1px solid gray; }
 	</style>
+	<!-- 
+	Pattern must implement getRgbArr(Timestamp frameTs, Timestamp lastFrameTs).
+	Pattern's model may implement drawModel(Canvas canvas, CanvasContext ctx)
+	-->
+	<script src="snowFlakePattern.js"></script>
+
 	<script type="text/javascript">
+		var canvas;
+		var ctx;
+		var frameTs;
+		var lastFrameTs;
 		var refreshRate = 50;
-		var fallRate = .05;
-		var failRateVariance = .5; 
 		var stringCount = 12;
 		var stringLedCount = 18;
 		var stringLedSpacing = 25;
 		var stringLedLead = 10;
 		var stringSpacing = 100;
 		var stringLead = 0;
-		var intensityThresh = 35;
-		var snowflakeStringDensity = 1;
-		var drawModel = true;
-		var canvas;
-		var ctx;
-		var frameTs;
-		var lastFrameTs;
-		var model = {
-			lastFrameTs: Date.now(),
-			frameTs: Date.now(),
-			snowflakes: []
-		};
+		var shouldDrawModel = true;
 
 		function init() {
 			canvas = document.getElementById('myCanvas');
 			ctx = canvas.getContext('2d');
+			createButtons();
 			requestFrame();
-			modelSnowflakes();
 		}
-		function getRgbArr() {
-			// prefill is not necessary
-			var rgbArr = [];
-			for (var i=0; i<model.snowflakes.length; i++) {
-				var sf = model.snowflakes[i];
-
-				var nearByLedIdxs = []
-				var fuzzyLedIdx = (sf.y-stringLedLead) / stringLedSpacing ;
-				if (fuzzyLedIdx % 1 == 0) {
-					nearByLedIdxs.push(fuzzyLedIdx);
-				}
-				else {
-					if (Math.ceil(fuzzyLedIdx) < stringLedCount) {
-						// middle led
-						nearByLedIdxs.push(Math.round(fuzzyLedIdx));
-						// before led
-						nearByLedIdxs.push(nearByLedIdxs[0]-1);
-						// next led
-						nearByLedIdxs.push(nearByLedIdxs[0]+1);
-					}
-				}
-
-				for (var k=0; k<nearByLedIdxs.length; k++) {
-					var ledIdx = nearByLedIdxs[k];
-					var ledStartIdx = sf.x*stringLedCount*3 + ledIdx*3;
-					var diff = Math.abs((ledIdx*stringLedSpacing+stringLedLead) - sf.y);
-					// account for this LED being previously set by another snowflake
-					var intensity = rgbArr[ledStartIdx] ? rgbArr[ledStartIdx] : 0; 
-					if (diff < intensityThresh) {
-						// assuming clamped array, so values over 255 are OK if two snowflakes become additive
-						intensity += Math.floor(255 / intensityThresh * (intensityThresh-diff));
-					}
-					rgbArr[ledStartIdx] = rgbArr[ledStartIdx+1] = rgbArr[ledStartIdx+2] = intensity;					
-				}
-			}
-			return rgbArr;
+		function requestFrame() {
+			setTimeout(function() {
+				draw();
+			}, refreshRate);
 		}
-		function draw(rgbArr) {
+		function draw() {
 
 			// frame init
 			frameTs = Date.now();
 			if (!lastFrameTs) {
 				lastFrameTs = frameTs;
 			}
+
+			var rgbArr = getRgbArr(frameTs, lastFrameTs);
 
 			// clear canvas
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -101,9 +68,9 @@
 				}
 			}
 
-			// The "real" snowflakes being modeled
-			if (drawModel) {
-				drawSnowflakes();
+			// The model, a representation of the pattern
+			if (shouldDrawModel && typeof drawModel == 'function') {
+				drawModel(canvas, ctx);
 			}
 
 			// frame conclusion
@@ -116,76 +83,25 @@
 		function getStringLead() {
 			return getStringSpacing() / 2;
 		}
-		function drawSnowflakes() {
-			for (var i=0; i<model.snowflakes.length; i++) {
-				var sf = model.snowflakes[i];
-				var x = getStringLead() + sf.x*getStringSpacing() - 20;
-				ctx.beginPath();
-				ctx.fillStyle = "rgb(244,3,244)";
-	        	ctx.arc(x,sf.y,5,0,Math.PI*2,false);
-	        	ctx.fill();				
-			}
-		}
-		function requestFrame() {
-			setTimeout(function() {
-				draw(getRgbArr());
-			}, refreshRate);
-		}
-		function modelSnowflakes() {
-			// frame init
-			model.frameTs = Date.now();
-			if (!model.lastFrameTs) {
-				model.lastFrameTs = model.frameTs;
-			}
-			// snowflake init
-			if (model.snowflakes.length==0) {
-				for (var i=0; i<stringCount; i++) {
-					for (var j=0; j<snowflakeStringDensity; j++) {
-						model.snowflakes.push(createSnowflake(i));
-					}
-				}
-			}
-			// move
-			for (var i=0; i<model.snowflakes.length; i++) {
-				var sf = model.snowflakes[i];
-				sf.y = drop(sf.y, sf.fallRate, model.frameTs-model.lastFrameTs);
-				// destroy snowflake once it falls beyond the string, and create a new one
-				if (sf.y > getLowestLedY() + intensityThresh) {
-					model.snowflakes.push(createSnowflake(sf.x));
-					model.snowflakes.splice(i,1);
-				}
-			}
-			// conclude
-			model.lastFrameTs = model.frameTs;
-			setTimeout(function() {
-				modelSnowflakes();
-			}, refreshRate);
-		}
-		function createSnowflake(stringIdx) {
-			return {
-				x:stringIdx, y:0,
-				fallRate: (fallRate+fallRate*failRateVariance) - Math.random()*fallRate*failRateVariance*2
-			}			
-		}
-		function drop(y, s, dt) {
-			var newY = y ? y : 0;
-			newY += dt * s;
-			return newY;
-		}
 		function getLowestLedY() {
 			return stringLedCount * stringLedSpacing + stringLedLead;
 		}
-		function newFilledArray(len, val) {
-		    var rv = new Array(len);
-		    while (--len >= 0) {
-		        rv[len] = val;
-		    }
-		    return rv;
+		function createButtons() {
+			if (isDrawModelImplemented()) {
+				var modelToggleBtn = document.createElement("button");
+				modelToggleBtn.innerHTML = "Toggle Model";
+				modelToggleBtn.onclick = function() {
+					shouldDrawModel = !shouldDrawModel;
+				}
+				document.body.appendChild(modelToggleBtn);
+			}
+		}
+		function isDrawModelImplemented() {
+			return typeof drawModel == 'function';
 		}
 	</script>
 </head>
 <body onload="init();">
 	<canvas id="myCanvas" width="800" height="500"></canvas><br>
-	<button onclick="drawModel=!drawModel">Toggle Model</button>
 </body>
 </html>
