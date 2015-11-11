@@ -23,13 +23,9 @@ function getRgbArr(frameTs, lastFrameTs) {
 			// middle led
 			nearByLedIdxs.push(Math.round(fuzzyLedIdx));
 			// before led
-			if (nearByLedIdxs[0] % stringLedCount-1 != 0) {
-				nearByLedIdxs.push(nearByLedIdxs[0]-1);
-			}
+			nearByLedIdxs.push(nearByLedIdxs[0]-1);
 			// next led
-			if (nearByLedIdxs[0] % stringLedCount != 0) {
-				nearByLedIdxs.push(nearByLedIdxs[0]+1);
-			}
+			nearByLedIdxs.push(nearByLedIdxs[0]+1);
 		}
 		
 		for (var k=0; k<nearByLedIdxs.length; k++) {
