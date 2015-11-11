@@ -14,8 +14,8 @@
 		var stringLedLead = 10;
 		var stringSpacing = 100;
 		var stringLead = 0;
-		var intensityThresh = 20;
-		var snowflakeStringDensity = 2;
+		var intensityThresh = 35;
+		var snowflakeStringDensity = 1;
 		var drawModel = true;
 		var canvas;
 		var ctx;
@@ -46,19 +46,25 @@
 				}
 				else {
 					if (Math.ceil(fuzzyLedIdx) < stringLedCount) {
-						nearByLedIdxs.push(Math.floor(fuzzyLedIdx));
-						nearByLedIdxs.push(Math.ceil(fuzzyLedIdx));
+						// middle led
+						nearByLedIdxs.push(Math.round(fuzzyLedIdx));
+						// before led
+						nearByLedIdxs.push(nearByLedIdxs[0]-1);
+						// next led
+						nearByLedIdxs.push(nearByLedIdxs[0]+1);
 					}
 				}
 
 				for (var k=0; k<nearByLedIdxs.length; k++) {
 					var ledIdx = nearByLedIdxs[k];
-					var diff = Math.abs((ledIdx*stringLedSpacing+stringLedLead) - sf.y);
-					var intensity = 0;
-					if (diff < intensityThresh) {
-						intensity = Math.floor(255 / intensityThresh * (intensityThresh-diff));
-					}
 					var ledStartIdx = sf.x*stringLedCount*3 + ledIdx*3;
+					var diff = Math.abs((ledIdx*stringLedSpacing+stringLedLead) - sf.y);
+					// account for this LED being previously set by another snowflake
+					var intensity = rgbArr[ledStartIdx] ? rgbArr[ledStartIdx] : 0; 
+					if (diff < intensityThresh) {
+						// assuming clamped array, so values over 255 are OK if two snowflakes become additive
+						intensity += Math.floor(255 / intensityThresh * (intensityThresh-diff));
+					}
 					rgbArr[ledStartIdx] = rgbArr[ledStartIdx+1] = rgbArr[ledStartIdx+2] = intensity;					
 				}
 			}
