@@ -16,13 +16,13 @@
 		var frameTs;
 		var lastFrameTs;
 		var refreshRate = 50;
-		var stringCount = 12;
-		var stringLedCount = 18;
-		var stringLedSpacing = 25;
-		var stringLedLead = 10;
-		var stringSpacing = 100;
-		var stringLead = 0;
 		var shouldDrawModel = true;
+
+		var stringCount = 12;
+		var stringLedCount = 50;
+		var stringLedLead = 120; // mm
+		var stringLedSpacing = 70; // mm
+		var stringLedSize = 8; // mm
 
 		function init() {
 			canvas = document.getElementById('myCanvas');
@@ -62,7 +62,11 @@
 					else {
 						ctx.fillStyle = "rgb(0,0,0)";
 					}
-					ctx.arc(i*getStringSpacing()+getStringLead(), k*stringLedSpacing+stringLedLead, 5, 0, Math.PI*2, false);
+					ctx.arc(
+						i * getStringSpacingInPx()+getStringLeadInPx(),
+						convertYToPx( k * stringLedSpacing+stringLedLead ),
+						convertYToPx(stringLedSize),
+						0, Math.PI*2, false);
 					ctx.stroke();
 					ctx.fill();
 				}
@@ -77,14 +81,11 @@
         	lastFrameTs = frameTs;
 			requestFrame();
 		}
-		function getStringSpacing() {
+		function getStringSpacingInPx() {
 			return canvas.width / stringCount;
 		}
-		function getStringLead() {
-			return getStringSpacing() / 2;
-		}
-		function getLowestLedY() {
-			return stringLedCount * stringLedSpacing + stringLedLead;
+		function getStringLeadInPx() {
+			return getStringSpacingInPx() / 2;
 		}
 		function createButtons() {
 			if (isDrawModelImplemented()) {
@@ -96,12 +97,18 @@
 				document.body.appendChild(modelToggleBtn);
 			}
 		}
+		function getStringLength() {
+			return stringLedLead*2 + (stringLedCount-1)*stringLedSpacing;
+		}
+		function convertYToPx(y) {
+			return canvas.height / getStringLength() * y;
+		}
 		function isDrawModelImplemented() {
 			return typeof drawModel == 'function';
 		}
 	</script>
 </head>
 <body onload="init();">
-	<canvas id="myCanvas" width="800" height="500"></canvas><br>
+	<canvas id="myCanvas" width="1200" height="700"></canvas><br>
 </body>
 </html>
